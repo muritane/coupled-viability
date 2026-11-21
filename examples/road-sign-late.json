@@ -1,0 +1,6 @@
+{
+  "visibility_m": 10.0,
+  "speed_mps": 20.0,
+  "recognition_latency_s": 0.35,
+  "reaction_latency_s": 0.8
+}

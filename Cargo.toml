@@ -1,0 +1,15 @@
+[package]
+name = "coupled-viability"
+version = "0.1.0"
+edition = "2021"
+description = "Executable experiments in coupled, deadline-bounded viability"
+license = "CC-BY-4.0"
+
+[dependencies]
+axum = { version = "0.8", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

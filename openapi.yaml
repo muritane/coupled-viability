@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: Coupled Viability Experiments
+  version: 0.1.0
+  description: |
+    Deterministic, bounded toy models of geometry, joint scheduling, and timely recognition.
+    Not certified safety-critical software. See docs/WHY.md and docs/API.md.
+servers:
+  - url: http://127.0.0.1:3000
+paths:
+  /health:
+    get:
+      summary: Check API status
+      responses:
+        '200':
+          description: Service status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  version: { type: string }
+  /api/v1/experiments:
+    get:
+      summary: List experiments
+      responses:
+        '200':
+          description: Experiment catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  experiments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        endpoint: { type: string }
+                        question: { type: string }
+  /api/v1/experiments/stereo:
+    post:
+      summary: Evaluate one rectified stereo correspondence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StereoInput'
+            example: {}
+      responses:
+        '200':
+          description: Geometry result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StereoResult'
+        '400':
+          $ref: '#/components/responses/Error'
+  /api/v1/experiments/multi-agent:
+    post:
+      summary: Compare independent paths and a joint delay schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MultiAgentInput'
+      responses:
+        '200':
+          description: Collision and scheduling result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultiAgentResult'
+        '400':
+          $ref: '#/components/responses/Error'
+  /api/v1/experiments/road-sign:
+    post:
+      summary: Determine whether recognition leaves enough time to respond
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoadSignInput'
+            example: {}
+      responses:
+        '200':
+          description: Recognition and response result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoadSignResult'
+        '400':
+          $ref: '#/components/responses/Error'
+  /api/v1/experiments/road-sign/sweep:
+    post:
+      summary: Compare viability under a deterministic scenario grid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoadSignSweepInput'
+            example: {}
+      responses:
+        '200':
+          description: Grid viability fractions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SweepResult'
+        '400':
+          $ref: '#/components/responses/Error'
+components:
+  responses:
+    Error:
+      description: Invalid physical bounds or experiment parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+  schemas:
+    StereoInput:
+      type: object
+      description: All properties optional; missing fields use the documented defaults.
+      properties:
+        baseline_m: { type: number, exclusiveMinimum: 0, default: 0.2 }
+        focal_length_px: { type: number, exclusiveMinimum: 0, default: 500 }
+        principal_u_px: { type: number, default: 320 }
+        left_u_px: { type: number, default: 350 }
+        left_v_px: { type: number, default: 240 }
+        right_u_px: { type: number, default: 330 }
+        right_v_px: { type: number, default: 240 }
+        max_epipolar_error_px: { type: number, minimum: 0, default: 1 }
+        independent_assumed_depth_m: { type: number, exclusiveMinimum: 0, default: 3 }
+        pixel_sigma_px: { type: number, minimum: 0, default: 0.3 }
+    Reconstruction:
+      type: object
+      required: [x_in_left_frame_m, depth_m, approximate_depth_sigma_m, left_reprojection_error_px, right_reprojection_error_px]
+      properties:
+        x_in_left_frame_m: { type: number }
+        depth_m: { type: number }
+        approximate_depth_sigma_m: { type: number }
+        left_reprojection_error_px: { type: number }
+        right_reprojection_error_px: { type: number }
+    StereoResult:
+      type: object
+      required: [independent_world_x_disagreement_m, disparity_px, epipolar_error_px, positive_disparity, correspondence_admissible, joint_reconstruction, interpretation]
+      properties:
+        independent_world_x_disagreement_m: { type: number }
+        disparity_px: { type: number }
+        epipolar_error_px: { type: number }
+        positive_disparity: { type: boolean }
+        correspondence_admissible: { type: boolean }
+        joint_reconstruction:
+          oneOf:
+            - $ref: '#/components/schemas/Reconstruction'
+            - type: 'null'
+        interpretation: { type: string }
+    Point:
+      type: object
+      required: [x, y]
+      properties:
+        x: { type: number }
+        y: { type: number }
+    Agent:
+      type: object
+      required: [start, goal, speed_mps, radius_m, deadline_s]
+      properties:
+        start: { $ref: '#/components/schemas/Point' }
+        goal: { $ref: '#/components/schemas/Point' }
+        speed_mps: { type: number, exclusiveMinimum: 0 }
+        radius_m: { type: number, minimum: 0 }
+        deadline_s: { type: number, exclusiveMinimum: 0 }
+    MultiAgentInput:
+      type: object
+      required: [agent_a, agent_b]
+      properties:
+        agent_a: { $ref: '#/components/schemas/Agent' }
+        agent_b: { $ref: '#/components/schemas/Agent' }
+        safety_margin_m: { type: number, minimum: 0, default: 0.05 }
+        delay_step_s: { type: number, exclusiveMinimum: 0, default: 0.25 }
+        max_delay_s: { type: number, minimum: 0, default: 3 }
+    AgentTiming:
+      type: object
+      required: [delay_s, arrival_s]
+      properties:
+        delay_s: { type: number }
+        arrival_s: { type: number }
+    JointSchedule:
+      type: object
+      required: [a, b, minimum_separation_m, makespan_s]
+      properties:
+        a: { $ref: '#/components/schemas/AgentTiming' }
+        b: { $ref: '#/components/schemas/AgentTiming' }
+        minimum_separation_m: { type: number }
+        makespan_s: { type: number }
+    MultiAgentResult:
+      type: object
+      required: [required_separation_m, independent_minimum_separation_m, independent_collision, independent_meets_both_deadlines, joint_schedule_found, joint_schedule, search_scope]
+      properties:
+        required_separation_m: { type: number }
+        independent_minimum_separation_m: { type: number }
+        independent_collision: { type: boolean }
+        independent_meets_both_deadlines: { type: boolean }
+        joint_schedule_found: { type: boolean }
+        joint_schedule:
+          oneOf:
+            - $ref: '#/components/schemas/JointSchedule'
+            - type: 'null'
+        search_scope: { type: string }
+    RoadSignInput:
+      type: object
+      description: Missing fields use a deterministic simplified baseline.
+      properties:
+        approach_distance_m: { type: number, minimum: 0, default: 120 }
+        speed_mps: { type: number, exclusiveMinimum: 0, default: 20 }
+        sign_height_m: { type: number, exclusiveMinimum: 0, default: 2 }
+        sign_width_m: { type: number, exclusiveMinimum: 0, default: 1.5 }
+        visibility_m: { type: number, minimum: 0, default: 110 }
+        visual_quality: { type: number, minimum: 0, maximum: 1, default: 0.8 }
+        minimum_angular_width_deg: { type: number, exclusiveMinimum: 0, exclusiveMaximum: 180, default: 0.8 }
+        recognition_latency_s: { type: number, minimum: 0, default: 0.35 }
+        reaction_latency_s: { type: number, minimum: 0, default: 0.8 }
+        deceleration_mps2: { type: number, exclusiveMinimum: 0, default: 5 }
+        maneuver_margin_m: { type: number, minimum: 0, default: 10 }
+        uncertainty_margin_s: { type: number, minimum: 0, default: 0.1 }
+    RoadSignResult:
+      type: object
+      required: [recognition_range_m, initial_observation_distance_m, detection_time_s, remaining_distance_at_detection_m, necessary_distance_m, stopping_distance_m, available_slack_m, recognition_possible, viable_response, explanation]
+      properties:
+        recognition_range_m: { type: number }
+        initial_observation_distance_m: { type: number }
+        detection_time_s: { type: number }
+        remaining_distance_at_detection_m: { type: number }
+        necessary_distance_m: { type: number }
+        stopping_distance_m: { type: number }
+        available_slack_m: { type: number }
+        recognition_possible: { type: boolean }
+        viable_response: { type: boolean }
+        explanation: { type: string }
+    RoadSignSweepInput:
+      type: object
+      description: All properties optional. Up to 10,000 scenario triples.
+      properties:
+        baseline: { $ref: '#/components/schemas/RoadSignInput' }
+        improved: { $ref: '#/components/schemas/RoadSignInput' }
+        speeds_mps:
+          type: array
+          items: { type: number, exclusiveMinimum: 0 }
+          default: [10, 15, 20, 25, 30]
+        visibility_factors:
+          type: array
+          items: { type: number, minimum: 0 }
+          default: [0.5, 0.75, 1]
+        quality_factors:
+          type: array
+          items: { type: number, minimum: 0, maximum: 1 }
+          default: [0.6, 0.8, 1]
+    SweepResult:
+      type: object
+      required: [scenario_count, baseline_viable_count, improved_viable_count, baseline_viability_fraction, improved_viability_fraction, gained_scenarios, lost_scenarios, interpretation]
+      properties:
+        scenario_count: { type: integer }
+        baseline_viable_count: { type: integer }
+        improved_viable_count: { type: integer }
+        baseline_viability_fraction: { type: number }
+        improved_viability_fraction: { type: number }
+        gained_scenarios: { type: integer }
+        lost_scenarios: { type: integer }
+        interpretation: { type: string }

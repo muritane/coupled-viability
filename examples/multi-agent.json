@@ -1,0 +1,19 @@
+{
+  "agent_a": {
+    "start": {"x": -2.0, "y": 0.0},
+    "goal": {"x": 2.0, "y": 0.0},
+    "speed_mps": 1.0,
+    "radius_m": 0.2,
+    "deadline_s": 8.0
+  },
+  "agent_b": {
+    "start": {"x": 0.0, "y": -2.0},
+    "goal": {"x": 0.0, "y": 2.0},
+    "speed_mps": 1.0,
+    "radius_m": 0.2,
+    "deadline_s": 8.0
+  },
+  "safety_margin_m": 0.05,
+  "delay_step_s": 0.25,
+  "max_delay_s": 3.0
+}

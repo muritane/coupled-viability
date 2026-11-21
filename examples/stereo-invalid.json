@@ -1,0 +1,7 @@
+{
+  "left_u_px": 350.0,
+  "left_v_px": 240.0,
+  "right_u_px": 330.0,
+  "right_v_px": 250.0,
+  "max_epipolar_error_px": 1.0
+}
