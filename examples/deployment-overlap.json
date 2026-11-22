@@ -1,0 +1,5 @@
+{
+  "consumer_changes": [
+    { "at_ms": 5, "accepted_versions": [1, 2] }
+  ]
+}

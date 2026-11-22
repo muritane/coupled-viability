@@ -40,6 +40,28 @@ paths:
                         id: { type: string }
                         endpoint: { type: string }
                         question: { type: string }
+  /api/v1/experiments/deployment:
+    post:
+      summary: Evaluate in-flight viability across producer and consumer configuration changes
+      description: |
+        Versions are active physical-process configurations, not source-control
+        metadata. Requests are schema-checked when the FIFO worker starts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentInput'
+            example: {}
+      responses:
+        '200':
+          description: Version compatibility, deadline outcomes and ordered execution trace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResult'
+        '400':
+          $ref: '#/components/responses/Error'
   /api/v1/experiments/stereo:
     post:
       summary: Evaluate one rectified stereo correspondence
@@ -127,6 +149,84 @@ components:
             properties:
               error: { type: string }
   schemas:
+    ProducerChange:
+      type: object
+      required: [at_ms, version]
+      properties:
+        at_ms: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 0 }
+    ConsumerChange:
+      type: object
+      required: [at_ms, accepted_versions]
+      properties:
+        at_ms: { type: integer, minimum: 0 }
+        accepted_versions:
+          type: array
+          items: { type: integer, minimum: 0 }
+    DeploymentRequest:
+      type: object
+      required: [id, sent_at_ms, deadline_at_ms]
+      properties:
+        id: { type: string, minLength: 1 }
+        sent_at_ms: { type: integer, minimum: 0 }
+        deadline_at_ms: { type: integer, minimum: 0 }
+    DeploymentInput:
+      type: object
+      description: |
+        Missing fields use defaults. Changes in either timeline must have
+        strictly increasing timestamps; a change at t is active at t.
+      properties:
+        initial_producer_version: { type: integer, minimum: 0, default: 1 }
+        initial_consumer_accepts:
+          type: array
+          items: { type: integer, minimum: 0 }
+          default: [1]
+        producer_changes:
+          type: array
+          maxItems: 1000
+          items: { $ref: '#/components/schemas/ProducerChange' }
+        consumer_changes:
+          type: array
+          maxItems: 1000
+          items: { $ref: '#/components/schemas/ConsumerChange' }
+        requests:
+          type: array
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/DeploymentRequest' }
+        network_latency_ms: { type: integer, minimum: 0, default: 4 }
+        processing_time_ms: { type: integer, minimum: 0, default: 2 }
+    DeploymentTrace:
+      type: object
+      required: [id, producer_version, sent_at_ms, received_at_ms, started_at_ms, finished_at_ms, deadline_at_ms, compatible_when_sent, accepted_versions_when_started, status]
+      properties:
+        id: { type: string }
+        producer_version: { type: integer }
+        sent_at_ms: { type: integer }
+        received_at_ms: { type: integer }
+        started_at_ms: { type: integer }
+        finished_at_ms: { type: integer }
+        deadline_at_ms: { type: integer }
+        compatible_when_sent: { type: boolean }
+        accepted_versions_when_started:
+          type: array
+          items: { type: integer }
+        status:
+          type: string
+          enum: [completed, schema_rejected, deadline_missed]
+    DeploymentResult:
+      type: object
+      required: [initial_configuration_compatible, final_configuration_compatible, completed, schema_rejected, deadline_missed, all_operations_successful, trace, interpretation]
+      properties:
+        initial_configuration_compatible: { type: boolean }
+        final_configuration_compatible: { type: boolean }
+        completed: { type: integer, minimum: 0 }
+        schema_rejected: { type: integer, minimum: 0 }
+        deadline_missed: { type: integer, minimum: 0 }
+        all_operations_successful: { type: boolean }
+        trace:
+          type: array
+          items: { $ref: '#/components/schemas/DeploymentTrace' }
+        interpretation: { type: string }
     StereoInput:
       type: object
       description: All properties optional; missing fields use the documented defaults.

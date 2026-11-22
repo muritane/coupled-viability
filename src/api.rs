@@ -1,4 +1,4 @@
-use crate::{multi_agent, road_sign, stereo};
+use crate::{deployment, multi_agent, road_sign, stereo};
 use axum::{
     extract::{DefaultBodyLimit, Json},
     http::StatusCode,
@@ -39,6 +39,11 @@ async fn experiments() -> Json<Value> {
                 "question": "Do independently feasible paths satisfy joint collision and deadline constraints?"
             },
             {
+                "id": "deployment",
+                "endpoint": "/api/v1/experiments/deployment",
+                "question": "Can individually compatible versions preserve in-flight work across a time-bearing change?"
+            },
+            {
                 "id": "road-sign",
                 "endpoint": "/api/v1/experiments/road-sign",
                 "question": "Does recognition occur early enough for an admissible response?"
@@ -60,6 +65,10 @@ async fn multi_agent_endpoint(Json(input): Json<multi_agent::MultiAgentInput>) -
     respond(multi_agent::run(input))
 }
 
+async fn deployment_endpoint(Json(input): Json<deployment::DeploymentInput>) -> ApiResponse {
+    respond(deployment::run(input))
+}
+
 async fn road_sign_endpoint(Json(input): Json<road_sign::RoadSignInput>) -> ApiResponse {
     respond(road_sign::run(input))
 }
@@ -74,6 +83,7 @@ pub fn router() -> Router {
         .route("/api/v1/experiments", get(experiments))
         .route("/api/v1/experiments/stereo", post(stereo_endpoint))
         .route("/api/v1/experiments/multi-agent", post(multi_agent_endpoint))
+        .route("/api/v1/experiments/deployment", post(deployment_endpoint))
         .route("/api/v1/experiments/road-sign", post(road_sign_endpoint))
         .route("/api/v1/experiments/road-sign/sweep", post(road_sign_sweep_endpoint))
         .layer(DefaultBodyLimit::max(64 * 1024))
@@ -134,4 +144,21 @@ mod tests {
         assert_eq!(value["independent_collision"], true);
         assert_eq!(value["joint_schedule_found"], true);
     }
+    #[tokio::test]
+    async fn deployment_api_exposes_in_flight_incompatibility() {
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/api/v1/experiments/deployment")
+            .header("content-type", "application/json")
+            .body(Body::from("{}"))
+            .unwrap();
+        let response = router().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), 100_000).await.unwrap();
+        let value: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(value["initial_configuration_compatible"], true);
+        assert_eq!(value["final_configuration_compatible"], true);
+        assert_eq!(value["schema_rejected"], 1);
+    }
+
 }

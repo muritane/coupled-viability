@@ -205,6 +205,12 @@ Angular legibility, effective visibility, observation latency, reaction latency,
 
 **It does not establish** recognition probability or automotive compliance. Sweep fractions are not statistical probabilities without a justified operating-condition distribution.
 
+### E4 — Versioned deployment across an event boundary
+
+Two producer/consumer versions each agree on a schema in their own stable configuration, but a request sent under the old configuration can arrive after the consumer stops accepting that schema. Fixed transport latency, processing time, and deadlines jointly determine the outcome. Keeping the old schema accepted during the overlap restores the example's in-flight compatibility.
+
+**It does not prove** that source versions identify running configurations or that recorded commits alone guarantee compatible physical execution. See [Evolving Constraints](EVOLVING_CONSTRAINTS.md).
+
 ## 9. Why this is distinct from existing repositories
 
 This project does not rename the already existing theories. The relationships are:
@@ -235,3 +241,15 @@ Strong tests need:
 - progression from toy models to calibrated simulations and then hardware where appropriate.
 
 No amount of internally consistent prose establishes these outcomes by itself. This repository starts with executable counterexamples and exposes assumptions for direct inspection.
+
+## 11. Evolving constraints are part of the evolving physical state
+
+The earlier formulation should not be mistaken for a once-and-for-all intersection of fixed constraint sets. Constructed constraints change, and **their changes are physical, time-bearing transitions**. The agents, environment, active configuration, queued operations, resource state, and relevant recorded history can be modeled as an augmented joint state. Source-control revisions identify representations, not all live instances or consequences of running code.
+
+An individually valid old configuration and individually valid new configuration need not admit a viable migration. Requests crossing a change can become incompatible or miss deadlines. Conversely, adding a compatibility window can save in-flight operations while increasing processing or maintenance cost. The issue is joint trajectories under active constraints, not whether continuous processes happen to have discrete event records.
+
+This applies to software, institutions, robotic controllers, and other embodied agents without introducing an ontological exception for humans. What changes across domains is the physical dynamics and what can be observed or recorded. Partial observability, irreversibility, and causal dependence occur in running software as well.
+
+The companion [Evolving Constraints: History, Versions, and Continuity](EVOLVING_CONSTRAINTS.md) contains the formal distinction between physical and constructed restrictions, versioned state and record, Git-like histories, event boundaries, and the executable deployment experiment.
+
+**Continuity of activity is not continuity of viability.**
