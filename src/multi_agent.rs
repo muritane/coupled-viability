@@ -216,7 +216,7 @@ pub fn run(input: MultiAgentInput) -> Result<MultiAgentResult, String> {
                 minimum_separation_m: separation,
                 makespan_s: arrival_a.max(arrival_b),
             };
-            let better = best.as_ref().map_or(true, |existing| {
+            let better = best.as_ref().is_none_or(|existing| {
                 candidate.makespan_s < existing.makespan_s - 1e-9
                     || ((candidate.makespan_s - existing.makespan_s).abs() < 1e-9
                         && delay_a + delay_b < existing.a.delay_s + existing.b.delay_s - 1e-9)
