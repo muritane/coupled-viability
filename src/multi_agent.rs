@@ -11,10 +11,16 @@ impl Point {
         (self.x - other.x).hypot(self.y - other.y)
     }
     fn minus(self, other: Point) -> Point {
-        Point { x: self.x - other.x, y: self.y - other.y }
+        Point {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
     }
     fn plus_scaled(self, delta: Point, scale: f64) -> Point {
-        Point { x: self.x + delta.x * scale, y: self.y + delta.y * scale }
+        Point {
+            x: self.x + delta.x * scale,
+            y: self.y + delta.y * scale,
+        }
     }
     fn dot(self, other: Point) -> f64 {
         self.x * other.x + self.y * other.y
@@ -90,12 +96,24 @@ pub struct MultiAgentResult {
 }
 
 fn validate_agent(name: &str, a: &Agent) -> Result<(), String> {
-    if [a.start.x, a.start.y, a.goal.x, a.goal.y, a.speed_mps, a.radius_m, a.deadline_s]
-        .iter().any(|x| !x.is_finite()) {
+    if [
+        a.start.x,
+        a.start.y,
+        a.goal.x,
+        a.goal.y,
+        a.speed_mps,
+        a.radius_m,
+        a.deadline_s,
+    ]
+    .iter()
+    .any(|x| !x.is_finite())
+    {
         return Err(format!("{name}: all quantities must be finite"));
     }
     if a.speed_mps <= 0.0 || a.radius_m < 0.0 || a.deadline_s <= 0.0 {
-        return Err(format!("{name}: speed and deadline must be positive, radius nonnegative"));
+        return Err(format!(
+            "{name}: speed and deadline must be positive, radius nonnegative"
+        ));
     }
     Ok(())
 }
@@ -145,7 +163,9 @@ pub fn run(input: MultiAgentInput) -> Result<MultiAgentResult, String> {
     validate_agent("agent_a", &input.agent_a)?;
     validate_agent("agent_b", &input.agent_b)?;
     if [input.safety_margin_m, input.delay_step_s, input.max_delay_s]
-        .iter().any(|x| !x.is_finite()) {
+        .iter()
+        .any(|x| !x.is_finite())
+    {
         return Err("scheduling parameters must be finite".into());
     }
     if input.safety_margin_m < 0.0 || input.delay_step_s <= 0.0 || input.max_delay_s < 0.0 {
@@ -185,16 +205,21 @@ pub fn run(input: MultiAgentInput) -> Result<MultiAgentResult, String> {
                 continue;
             }
             let candidate = JointSchedule {
-                a: AgentTiming { delay_s: delay_a, arrival_s: arrival_a },
-                b: AgentTiming { delay_s: delay_b, arrival_s: arrival_b },
+                a: AgentTiming {
+                    delay_s: delay_a,
+                    arrival_s: arrival_a,
+                },
+                b: AgentTiming {
+                    delay_s: delay_b,
+                    arrival_s: arrival_b,
+                },
                 minimum_separation_m: separation,
                 makespan_s: arrival_a.max(arrival_b),
             };
             let better = best.as_ref().map_or(true, |existing| {
                 candidate.makespan_s < existing.makespan_s - 1e-9
                     || ((candidate.makespan_s - existing.makespan_s).abs() < 1e-9
-                        && delay_a + delay_b
-                            < existing.a.delay_s + existing.b.delay_s - 1e-9)
+                        && delay_a + delay_b < existing.a.delay_s + existing.b.delay_s - 1e-9)
             });
             if better {
                 best = Some(candidate);

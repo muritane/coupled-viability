@@ -100,9 +100,7 @@ pub fn run(input: RoadSignInput) -> Result<RoadSignResult, String> {
     if !range.is_finite() {
         return Err("recognition geometry exceeds numeric range".into());
     }
-    let first_observation = range
-        .min(input.visibility_m)
-        .min(input.approach_distance_m);
+    let first_observation = range.min(input.visibility_m).min(input.approach_distance_m);
     let detection_time = (input.approach_distance_m - first_observation) / input.speed_mps;
     let stopping = input.speed_mps.powi(2) / (2.0 * input.deceleration_mps2);
     let necessary = input.speed_mps
@@ -188,15 +186,23 @@ pub fn sweep(input: RoadSignSweepInput) -> Result<SweepResult, String> {
     {
         return Err("sweep input arrays must be nonempty".into());
     }
-    let count = input.speeds_mps.len()
+    let count = input
+        .speeds_mps
+        .len()
         .checked_mul(input.visibility_factors.len())
         .and_then(|x| x.checked_mul(input.quality_factors.len()))
         .ok_or("scenario count overflow")?;
     if count > 10_000 {
         return Err("at most 10,000 scenarios are supported".into());
     }
-    if input.visibility_factors.iter().any(|x| !x.is_finite() || *x < 0.0)
-        || input.quality_factors.iter().any(|x| !x.is_finite() || !(0.0..=1.0).contains(x))
+    if input
+        .visibility_factors
+        .iter()
+        .any(|x| !x.is_finite() || *x < 0.0)
+        || input
+            .quality_factors
+            .iter()
+            .any(|x| !x.is_finite() || !(0.0..=1.0).contains(x))
     {
         return Err("visibility factors must be nonnegative, quality factors in [0,1]".into());
     }
@@ -248,14 +254,22 @@ mod tests {
 
     #[test]
     fn zero_visibility_blocks_detection() {
-        let r = run(RoadSignInput { visibility_m: 0.0, ..Default::default() }).unwrap();
+        let r = run(RoadSignInput {
+            visibility_m: 0.0,
+            ..Default::default()
+        })
+        .unwrap();
         assert!(!r.recognition_possible);
         assert!(!r.viable_response);
     }
 
     #[test]
     fn late_appearance_fails_even_when_recognizable() {
-        let r = run(RoadSignInput { visibility_m: 10.0, ..Default::default() }).unwrap();
+        let r = run(RoadSignInput {
+            visibility_m: 10.0,
+            ..Default::default()
+        })
+        .unwrap();
         assert!(r.recognition_possible);
         assert!(!r.viable_response);
     }

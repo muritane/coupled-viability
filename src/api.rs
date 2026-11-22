@@ -82,10 +82,16 @@ pub fn router() -> Router {
         .route("/health", get(health))
         .route("/api/v1/experiments", get(experiments))
         .route("/api/v1/experiments/stereo", post(stereo_endpoint))
-        .route("/api/v1/experiments/multi-agent", post(multi_agent_endpoint))
+        .route(
+            "/api/v1/experiments/multi-agent",
+            post(multi_agent_endpoint),
+        )
         .route("/api/v1/experiments/deployment", post(deployment_endpoint))
         .route("/api/v1/experiments/road-sign", post(road_sign_endpoint))
-        .route("/api/v1/experiments/road-sign/sweep", post(road_sign_sweep_endpoint))
+        .route(
+            "/api/v1/experiments/road-sign/sweep",
+            post(road_sign_sweep_endpoint),
+        )
         .layer(DefaultBodyLimit::max(64 * 1024))
 }
 
@@ -98,9 +104,15 @@ mod tests {
 
     #[tokio::test]
     async fn health_endpoint_works() {
-        let response = router().oneshot(
-            Request::builder().uri("/health").body(Body::empty()).unwrap()
-        ).await.unwrap();
+        let response = router()
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
     }
 
@@ -110,7 +122,8 @@ mod tests {
             .method(Method::POST)
             .uri("/api/v1/experiments/stereo")
             .header("content-type", "application/json")
-            .body(Body::from("{}")).unwrap();
+            .body(Body::from("{}"))
+            .unwrap();
         let response = router().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), 100_000).await.unwrap();
@@ -124,7 +137,8 @@ mod tests {
             .method(Method::POST)
             .uri("/api/v1/experiments/stereo")
             .header("content-type", "application/json")
-            .body(Body::from(r#"{"baseline_m":-1}"#)).unwrap();
+            .body(Body::from(r#"{"baseline_m":-1}"#))
+            .unwrap();
         let response = router().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
@@ -135,7 +149,9 @@ mod tests {
             .method(Method::POST)
             .uri("/api/v1/experiments/multi-agent")
             .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&multi_agent::MultiAgentInput::default()).unwrap()))
+            .body(Body::from(
+                serde_json::to_vec(&multi_agent::MultiAgentInput::default()).unwrap(),
+            ))
             .unwrap();
         let response = router().oneshot(request).await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
@@ -160,5 +176,4 @@ mod tests {
         assert_eq!(value["final_configuration_compatible"], true);
         assert_eq!(value["schema_rejected"], 1);
     }
-
 }

@@ -80,10 +80,9 @@ pub fn run(input: StereoInput) -> Result<StereoResult, String> {
     }
 
     let z0 = input.independent_assumed_depth_m;
-    let independent_left_x =
-        (input.left_u_px - input.principal_u_px) * z0 / input.focal_length_px;
-    let independent_right_x = input.baseline_m
-        + (input.right_u_px - input.principal_u_px) * z0 / input.focal_length_px;
+    let independent_left_x = (input.left_u_px - input.principal_u_px) * z0 / input.focal_length_px;
+    let independent_right_x =
+        input.baseline_m + (input.right_u_px - input.principal_u_px) * z0 / input.focal_length_px;
     let disagreement = (independent_left_x - independent_right_x).abs();
 
     let disparity = input.left_u_px - input.right_u_px;
@@ -93,8 +92,7 @@ pub fn run(input: StereoInput) -> Result<StereoResult, String> {
         let depth = input.focal_length_px * input.baseline_m / disparity;
         let x = (input.left_u_px - input.principal_u_px) * depth / input.focal_length_px;
         let u_left = input.focal_length_px * x / depth + input.principal_u_px;
-        let u_right =
-            input.focal_length_px * (x - input.baseline_m) / depth + input.principal_u_px;
+        let u_right = input.focal_length_px * (x - input.baseline_m) / depth + input.principal_u_px;
         let depth_sigma = input.focal_length_px * input.baseline_m / disparity.powi(2)
             * (2.0_f64).sqrt()
             * input.pixel_sigma_px;
@@ -146,14 +144,22 @@ mod tests {
 
     #[test]
     fn inconsistent_epipolar_pair_is_not_a_reconstruction() {
-        let r = run(StereoInput { right_v_px: 250.0, ..Default::default() }).unwrap();
+        let r = run(StereoInput {
+            right_v_px: 250.0,
+            ..Default::default()
+        })
+        .unwrap();
         assert!(!r.correspondence_admissible);
         assert!(r.joint_reconstruction.is_none());
     }
 
     #[test]
     fn zero_disparity_is_rejected() {
-        let r = run(StereoInput { right_u_px: 350.0, ..Default::default() }).unwrap();
+        let r = run(StereoInput {
+            right_u_px: 350.0,
+            ..Default::default()
+        })
+        .unwrap();
         assert!(r.joint_reconstruction.is_none());
     }
 }

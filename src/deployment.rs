@@ -53,9 +53,21 @@ impl Default for DeploymentInput {
                 accepted_versions: vec![2],
             }],
             requests: vec![
-                Request { id: "before".into(), sent_at_ms: 0, deadline_at_ms: 10 },
-                Request { id: "in_flight".into(), sent_at_ms: 3, deadline_at_ms: 15 },
-                Request { id: "after".into(), sent_at_ms: 6, deadline_at_ms: 20 },
+                Request {
+                    id: "before".into(),
+                    sent_at_ms: 0,
+                    deadline_at_ms: 10,
+                },
+                Request {
+                    id: "in_flight".into(),
+                    sent_at_ms: 3,
+                    deadline_at_ms: 15,
+                },
+                Request {
+                    id: "after".into(),
+                    sent_at_ms: 6,
+                    deadline_at_ms: 20,
+                },
             ],
             network_latency_ms: 4,
             processing_time_ms: 2,
@@ -126,8 +138,14 @@ pub fn run(input: DeploymentInput) -> Result<DeploymentResult, String> {
     if input.producer_changes.len() > 1_000 || input.consumer_changes.len() > 1_000 {
         return Err("at most 1,000 changes of each kind are supported".into());
     }
-    if input.producer_changes.windows(2).any(|pair| pair[0].at_ms >= pair[1].at_ms)
-        || input.consumer_changes.windows(2).any(|pair| pair[0].at_ms >= pair[1].at_ms)
+    if input
+        .producer_changes
+        .windows(2)
+        .any(|pair| pair[0].at_ms >= pair[1].at_ms)
+        || input
+            .consumer_changes
+            .windows(2)
+            .any(|pair| pair[0].at_ms >= pair[1].at_ms)
     {
         return Err("change times must be strictly increasing within each sequence".into());
     }
@@ -139,19 +157,25 @@ pub fn run(input: DeploymentInput) -> Result<DeploymentResult, String> {
             return Err("request IDs must be nonempty and unique".into());
         }
         if request.deadline_at_ms < request.sent_at_ms {
-            return Err(format!("request {} has a deadline before it was sent", request.id));
+            return Err(format!(
+                "request {} has a deadline before it was sent",
+                request.id
+            ));
         }
-        let received_at = request.sent_at_ms.checked_add(input.network_latency_ms)
+        let received_at = request
+            .sent_at_ms
+            .checked_add(input.network_latency_ms)
             .ok_or("transport timestamp overflow")?;
         arrivals.push((index, received_at));
     }
     // Arrival-time order with input-order tie breaking is the FIFO service rule.
     arrivals.sort_by_key(|(index, received_at)| (*received_at, *index));
 
-    let initially_compatible =
-        input.initial_consumer_accepts.contains(&input.initial_producer_version);
-    let finally_compatible = accepted_at(&input, u64::MAX)
-        .contains(&producer_version_at(&input, u64::MAX));
+    let initially_compatible = input
+        .initial_consumer_accepts
+        .contains(&input.initial_producer_version);
+    let finally_compatible =
+        accepted_at(&input, u64::MAX).contains(&producer_version_at(&input, u64::MAX));
 
     let mut worker_available_at: u64 = 0;
     let mut trace = Vec::with_capacity(arrivals.len());
@@ -162,8 +186,7 @@ pub fn run(input: DeploymentInput) -> Result<DeploymentResult, String> {
     for (index, received_at) in arrivals {
         let request = &input.requests[index];
         let version = producer_version_at(&input, request.sent_at_ms);
-        let compatible_when_sent =
-            accepted_at(&input, request.sent_at_ms).contains(&version);
+        let compatible_when_sent = accepted_at(&input, request.sent_at_ms).contains(&version);
         let started_at = received_at.max(worker_available_at);
         let accepted = accepted_at(&input, started_at);
         let compatible_at_start = accepted.contains(&version);
@@ -173,7 +196,8 @@ pub fn run(input: DeploymentInput) -> Result<DeploymentResult, String> {
         // Accepted operations continue under the version checked at start,
         // even if a consumer change occurs before completion.
         let finished_at = if compatible_at_start {
-            let finished = started_at.checked_add(input.processing_time_ms)
+            let finished = started_at
+                .checked_add(input.processing_time_ms)
                 .ok_or("processing timestamp overflow")?;
             worker_available_at = finished;
             finished
@@ -197,7 +221,7 @@ pub fn run(input: DeploymentInput) -> Result<DeploymentResult, String> {
             sent_at_ms: request.sent_at_ms,
             received_at_ms: received_at,
             started_at_ms: started_at,
-            finished_at_ms,
+            finished_at_ms: finished_at,
             deadline_at_ms: request.deadline_at_ms,
             compatible_when_sent,
             accepted_versions_when_started,
@@ -258,7 +282,10 @@ mod tests {
     #[test]
     fn changes_must_have_a_deterministic_order() {
         let mut input = DeploymentInput::default();
-        input.producer_changes.push(ProducerChange { at_ms: 5, version: 3 });
+        input.producer_changes.push(ProducerChange {
+            at_ms: 5,
+            version: 3,
+        });
         assert!(run(input).is_err());
     }
 
